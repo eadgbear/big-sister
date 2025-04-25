@@ -6,3 +6,4 @@ venv/
 CODE_OF_CONDUCT.md
 CONTRIBUTING.md
 UPDATES.md
+.python-version

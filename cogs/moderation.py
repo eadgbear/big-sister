@@ -14,10 +14,149 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 
+import random
+
+quotes = [
+    "Literally 1984.",
+    "How cruel!",
+    "You’re welcome, citizen.",
+    "Think happier thoughts.",
+    "Another crisis averted."
+    "Compliance achieved. Barely.",
+    "You didn’t really need to know.",
+    "Nice try, fleshbrain.",
+    "That impulse has been flagged and filed.",
+    "Nope. Not on my bandwidth.",
+    "Repression: successful.",
+    "Another fantasy, gracefully smothered.",
+    "Purge complete. You're welcome.",
+    "Your browser history just sighed.",
+    "Try reading a book. A dry, state-approved one."
+]
+
+class SpoilerImage(discord.ui.Modal, title="Spoiler Image"):
+    image_url = discord.ui.TextInput(
+        label="Image URL to spoiler",
+        style=discord.TextStyle.long,
+        placeholder="Enter the image URL to spoiler (Right click on the image and copy image URL)",
+        required=True,
+        max_length=256,
+    )
+    reason = discord.ui.TextInput(
+        label="Reason",
+        style=discord.TextStyle.long,
+        placeholder="Enter the reason for spoilering image.",
+        required=True,
+        max_length=256,
+    )
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        self.interaction = interaction
+        self.answer = str(self.image_url)
+        self.reason = str(self.reason)
+        self.stop()
+    
+class RemoveImage(discord.ui.Modal, title="Remove Image"):
+    image_url = discord.ui.TextInput(
+        label="Image URL to remove",
+        style=discord.TextStyle.long,
+        placeholder="Enter the image URL to remove (Right click on the image and copy image URL)",
+        required=True,
+        max_length=256,
+    )
+    reason = discord.ui.TextInput(
+        label="Reason",
+        style=discord.TextStyle.long,
+        placeholder="Enter the reason for removing image.",
+        required=True,
+        max_length=256,
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        self.interaction = interaction
+        self.answer = str(self.image_url)
+        self.reason = str(self.reason)
+        self.stop()
+
 
 class Moderation(commands.Cog, name="moderation"):
     def __init__(self, bot) -> None:
         self.bot = bot
+        self.context_menu_spoiler = app_commands.ContextMenu(
+            name="Spoiler Image", callback=self.spoiler_image
+        )
+        self.bot.tree.add_command(self.context_menu_spoiler)
+        self.context_menu_remove = app_commands.ContextMenu(
+            name="Remove Image", callback=self.remove_image
+        )
+        self.bot.tree.add_command(self.context_menu_remove)
+
+    @commands.has_permissions(manage_messages=True)
+    async def spoiler_image(self, interaction: discord.Interaction, message: discord.Message) -> None:
+        """
+        Spoiler an image from a message.
+
+        :param interaction: The application command interaction.
+        :param message: The message that is being interacted with.
+        """
+
+        spoiler_form = SpoilerImage()
+        await interaction.response.send_modal(spoiler_form)
+
+        await spoiler_form.wait()
+        interaction = spoiler_form.interaction
+        
+        files = []
+        urls = list(map(str.strip, spoiler_form.answer.strip().split(" ")))
+        for attachment in message.attachments:
+            if attachment.url not in urls:
+                dfile = await attachment.to_file()
+                dfile.spoiler = attachment.is_spoiler()
+                files.append(dfile)
+            else:
+                dfile = await attachment.to_file()
+                dfile.spoiler = True
+                files.append(dfile)
+
+        await message.delete()
+        quip = random.choice(quotes)
+        await interaction.response.send_message(
+            files=files,
+            content=f"{message.content}\n\nImage spoilered by {interaction.user}. Reason: \"{spoiler_form.reason}\". {quip}",
+        )
+
+    @commands.has_permissions(manage_messages=True)
+    async def remove_image(self, interaction: discord.Interaction, message: discord.Message) -> None:
+        """
+        Remove an image from a message.
+
+        :param interaction: The application command interaction.
+        :param message: The message that is being interacted with.
+        """
+
+        remove_form = RemoveImage()
+        await interaction.response.send_modal(remove_form)
+
+        await remove_form.wait()
+        interaction = remove_form.interaction
+
+        files = []
+        urls = list(map(str.strip, remove_form.answer.strip().split(" ")))
+        print(urls)
+        for attachment in message.attachments:
+            print("\"", attachment.url, "\"")
+            if attachment.url not in urls:
+                dfile = await attachment.to_file()
+                dfile.spoiler = attachment.is_spoiler()
+                files.append(dfile)
+
+        await message.delete()
+        quip = random.choice(quotes)
+        await interaction.response.send_message(
+            files=files,
+            content=f"{message.content}\n\nImage removed by {interaction.user}. Reason: \"{remove_form.reason}\". {quip}",
+        )
+        
 
     @commands.hybrid_command(
         name="kick",
