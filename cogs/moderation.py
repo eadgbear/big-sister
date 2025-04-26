@@ -78,7 +78,6 @@ class RemoveImage(discord.ui.Modal, title="Remove Image"):
         self.reason = str(self.reason)
         self.stop()
 
-
 class Moderation(commands.Cog, name="moderation"):
     def __init__(self, bot) -> None:
         self.bot = bot
@@ -100,6 +99,14 @@ class Moderation(commands.Cog, name="moderation"):
         :param message: The message that is being interacted with.
         """
 
+        if interaction.user.resolved_permissions.manage_messages is False:
+            embed = discord.Embed(
+                description="You do not have permission to use this command.",
+                color=0xE02B2B
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
         spoiler_form = SpoilerImage()
         await interaction.response.send_modal(spoiler_form)
 
@@ -134,6 +141,14 @@ class Moderation(commands.Cog, name="moderation"):
         :param message: The message that is being interacted with.
         """
 
+        if interaction.user.resolved_permissions.manage_messages is False:
+            embed = discord.Embed(
+                description="You do not have permission to use this command.",
+                color=0xE02B2B
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
         remove_form = RemoveImage()
         await interaction.response.send_modal(remove_form)
 
@@ -142,9 +157,7 @@ class Moderation(commands.Cog, name="moderation"):
 
         files = []
         urls = list(map(str.strip, remove_form.answer.strip().split(" ")))
-        print(urls)
         for attachment in message.attachments:
-            print("\"", attachment.url, "\"")
             if attachment.url not in urls:
                 dfile = await attachment.to_file()
                 dfile.spoiler = attachment.is_spoiler()
